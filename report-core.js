@@ -23,7 +23,7 @@ export const install = function(Vue){
         function overVueErrorHandler(){
             let origal = Vue.config.errorHandler || shared.noop;
             return function(err,vm,info){
-                report.send({
+                report.send({ 
                     message: err.message,
                     stack: err.stack,
                     info,
