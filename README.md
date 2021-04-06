@@ -1,12 +1,12 @@
-#前端异常监控的核心原理
+# 前端异常监控的核心原理
 
-##监控异常的分类
+## 监控异常的分类
    1. js运行时异常
    2. 静态资源加载异常（img script link等）
    3. promise未处理的异常（未使用catch捕获）
    4. 接口异常
 
-##如何捕获异常
+## 如何捕获异常
    1. js运行时异常
       window.onerror和window.addEventListener('error',e=>{})均可用来获取js异常，其中addEventListener('error',callback)优先级高于onerror。但在Vue项目中这两个是无法捕获到js的异常。另一个兼容方案是：重写Vue本身的异常捕获的api：Vue.config.errorHandler。具体代码实现看report-core.js文件。
 

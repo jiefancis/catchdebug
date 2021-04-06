@@ -10,7 +10,6 @@ import axios from 'axios'
     reset()
     let options = {
         url: "http://localhost:3000/create",
-
     }
 
     
@@ -29,7 +28,8 @@ import axios from 'axios'
             captureVueError,
             captureResourceError,
             capturePromiseError,
-            captureAjaxError
+            captureAjaxError,
+            captureAjaxHandler
         }
 
         function init(_options){
@@ -102,7 +102,7 @@ import axios from 'axios'
             })
             window.XMLHttpRequest = newXHR
              
-            const ajaxReportHandler = {
+            var captureAjaxHandler = {
                 open(e){
                     // console.log('open', e)
                     // report.send(err)
@@ -124,7 +124,7 @@ import axios from 'axios'
                 },
             }
             function ajaxHandlerCb(eventName, e) {
-                ajaxReportHandler[eventName](e)
+                captureAjaxHandler[eventName](e)
             }
         }
         function createCustomEvent(eventName){
