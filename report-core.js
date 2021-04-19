@@ -199,6 +199,7 @@ const em = (
         monitor.bindEvent = function (){
             monitor.logJsException()
             monitor.bindErrorEvent()
+            monitor.logAjaxException()
             monitor.logCrashException()
         }
         // js的异常
@@ -267,14 +268,25 @@ const em = (
             window.dispatchEvent(event)
         }
         // 处理ajax api事件信息
-        function ajaxApiHandler(e) {
-            const handler = {
-                open(){}
-            }
-        } 
+        const handler = {
+            open(){}
+        }
         monitor.logAjaxException = function(){
-            const customName = utils.generatorXhrApi(event)
-                        window.addEventListener(customName, function(e) {})
+            xhrEvents.forEach(event => {
+                handler[event] = function(e){
+                    const data = {
+                        stack: e,
+                        message: e.message,
+                        type: 'ajax'
+                    }
+                    monitor.log(data)
+                }
+                const customName = utils.generatorXhrApi(event)
+                window.addEventListener(customName, function(e) {
+                    handler[event](e)
+                })
+            })
+            
             overwriteXhr()
         }
 
