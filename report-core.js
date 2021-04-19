@@ -2,30 +2,7 @@ import Vue from 'vue'
 import axios from 'axios'
 
 // 网页崩溃的监控原理
-if('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js', { scope: '/'}).then(res => {
-      console.log('register successed', res)
-      let HEARTBEAT_INTERVAL = 5 * 1000; // 每五秒发一次心跳
-      let sessionId = 'user-invoke';
-      let heartbeat = function () {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'heartbeat',
-          id: sessionId,
-          data: {} // 附加信息，如果页面 crash，上报的附加数据
-        });
-      }
-      window.addEventListener("beforeunload", function() {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'unload',
-          id: sessionId
-        });
-      });
-      setInterval(heartbeat, HEARTBEAT_INTERVAL);
-      heartbeat();
-    }).catch(err => {
-      console.log('register failed', err)
-    })
-  }
+
 // export const install = function(Vue){
 //     let events = [
 //         'open', 'send',
@@ -216,9 +193,13 @@ const em = (
         }
         // 初始化，传入自定义上传地址与
         monitor.init = function (options){
-
+            monitor.bindEvent()
+        }
+            
+        monitor.bindEvent = function (){
             monitor.logJsException()
             monitor.bindErrorEvent()
+            monitor.logCrashException()
         }
         // js的异常
         monitor.logJsException = function(){
@@ -295,6 +276,34 @@ const em = (
             const customName = utils.generatorXhrApi(event)
                         window.addEventListener(customName, function(e) {})
             overwriteXhr()
+        }
+
+        // 网页崩溃异常，后期会实现为插件引入
+        monitor.logCrashException = function () {
+            if('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js', { scope: '/'}).then(res => {
+                    console.log('register successed', res)
+                    let HEARTBEAT_INTERVAL = 5 * 1000; // 每五秒发一次心跳
+                    let sessionId = 'user-invoke';
+                    let heartbeat = function () {
+                        navigator.serviceWorker.controller.postMessage({
+                        type: 'heartbeat',
+                        id: sessionId,
+                        data: {} // 附加信息，如果页面 crash，上报的附加数据
+                        });
+                    }
+                    window.addEventListener("beforeunload", function() {
+                        navigator.serviceWorker.controller.postMessage({
+                        type: 'unload',
+                        id: sessionId
+                        });
+                    });
+                    setInterval(heartbeat, HEARTBEAT_INTERVAL);
+                    heartbeat();
+                }).catch(err => {
+                  console.log('register failed', err)
+                })
+            }
         }
     }
 )()
