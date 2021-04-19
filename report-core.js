@@ -33,6 +33,10 @@ const emo = (
         let config = {}
         const monitor = baseApi
         monitor.log = function(data){
+            // ajax监控暂未完善
+            if(data.type === 'ajax') {
+                return 
+            }
             const options = {
                 site: FROM_SiTE,
                 data,
@@ -41,13 +45,13 @@ const emo = (
             };
 
             console.log('上报log', data)
-            // axios({
-            //     ...options
-            // }).then(res => {
-            //     console.log('上报成功', res)
-            // }).catch(err => {
-            //     console.log('上报失败', err)
-            // })
+            axios({
+                ...options
+            }).then(res => {
+                console.log('上报成功', res)
+            }).catch(err => {
+                console.log('上报失败', err)
+            })
 
         }
         // 初始化，传入上传地址
