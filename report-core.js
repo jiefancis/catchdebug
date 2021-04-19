@@ -1,173 +1,16 @@
 import Vue from 'vue'
 import axios from 'axios'
-
-// 网页崩溃的监控原理
-
-// export const install = function(Vue){
-//     let events = [
-//         'open', 'send',
-//         'loadstart', 'loadend', 'load',
-//         'abort'
-//     ];
-//     let oldXMLHttpRequest = window.XMLHttpRequest;
-//     reset()
-//     let options = {
-//         url: "http://localhost:3000/create",
-//     }
-
-    
-//         const report = {
-//             send(err){
-//                 // let url = "http://localhost:3000/create"
-//                 axios.post(options.url, {detail: JSON.stringify(err)})
-//             }
-//         }
-//         const shared = {
-//             noop(){}
-//         }
-
-//         const captureHandler = {
-//             init,
-//             captureVueError,
-//             captureResourceError,
-//             capturePromiseError,
-//             captureAjaxError,
-//             captureAjaxHandler
-//         }
-
-//         function init(_options){
-//             Object.assign(options, _options)
-//             captureHandler.captureAjaxError()
-//         }
-//         /**vue js runtime error */
-//         function captureVueError(){
-//             let origal = Vue.config.errorHandler || shared.noop;
-//             return function(err,vm,info){
-//                 report.send({
-//                     message: err.message,
-//                     stack: err.stack,
-//                     info,
-//                     errorType: 'referenceError',
-//                     type: err.srcElement.localName
-//                 })
-//                 origal.call(this,err, info, vm)
-//             }
-
-//         }
-        
-//         Vue.config.errorHandler = captureVueError()
-        
-
-//         /**vue resource load error */
-//         function matchResourceError(srcElement){
-//             let matchs = [HTMLImageElement, HTMLLinkElement, HTMLScriptElement]
-//             return matchs.filter(proto => srcElement instanceof proto).length
-//         }
-//         function captureResourceError(err){
-//             if(matchResourceError(err.srcElement)){
-//                 report.send({
-//                     message: err.srcElement.currentSrc,
-//                     site: err.srcElement.baseURI,
-//                     errorType: 'resourceError',
-//                     type: err.srcElement.localName
-//                 })
-//             }
-//         }
-//         window.addEventListener('error', captureResourceError, true)
-        
-
-//         /**promise not catch error */
-//         function capturePromiseError(e) {
-//             console.error('PROMISE', e)
-//             console.error(`UNHANDLED PROMISE REJECTION: ${e.reason}`);
-//         }
-//         window.addEventListener('unhandledrejection', capturePromiseError, false)
-
-
-//         /**ajax interactive exception */
-//         function captureAjaxError(){
-//             function newXHR(){
-//                 let realXHR = new oldXMLHttpRequest()
-//                     let eventName
-//                     events.forEach(event => {
-//                         realXHR.addEventListener(event, function(){
-//                             eventName = `ajax${event[0].toUpperCase() + event.slice(1)}`
-//                             createCustomEvent(eventName)
-//                         })
-//                     })
-                
-//                 return realXHR
-//             }
-//             events.forEach(event => {
-//                 window.addEventListener(`ajax${event[0].toUpperCase() + event.slice(1)}`, e => {
-//                     ajaxHandlerCb(event, {_reportEvent: true, e})
-//                 })
-//             })
-//             window.XMLHttpRequest = newXHR
-             
-//             var captureAjaxHandler = {
-//                 open(e){
-//                     // console.log('open', e)
-//                     // report.send(err)
-//                 },
-//                 send(e){
-//                     // console.log('send', e)
-//                 },
-//                 loadstart(e){
-//                     // console.log('loadstart', e)
-//                 },
-//                 loadend(e){
-//                     // console.log('loadend', e)
-//                 },
-//                 load(e){
-//                     // console.log('load', e)
-//                 },
-//                 abort(e){
-//                     // console.log('abort', e)
-//                 },
-//             }
-//             function ajaxHandlerCb(eventName, e) {
-//                 captureAjaxHandler[eventName](e)
-//             }
-//         }
-//         function createCustomEvent(eventName){
-//             let event = new CustomEvent(eventName, { detail: this })
-//             window.dispatchEvent(event)
-//         }
-        
-        
-        
-
-
-//         /**项目重新刷新，是否又会重新引入一次？再次绑定再次初始化？ */
-//         function reset(){
-//             removeAjaxEvent()
-//             removeResourceEvent()
-//             removePromiseEvent()
-//         }
-//         function removeAjaxEvent() {
-//             let realXHR = new oldXMLHttpRequest()
-//             events.forEach(event => {
-//                 realXHR.removeEventListener(event, () => shared.noop)
-//                 window.removeEventListener( `ajax${event[0].toUpperCase() + event.slice(1)}`, () => shared.noop)
-//             })
-//         }
-//         function removeResourceEvent(){
-//             window.removeEventListener('error', () => shared.noop)
-//         }
-//         function removePromiseEvent(){
-//             window.removeEventListener('unhandledrejection', () => shared.noop)
-//         }
-
-// export const Report = captureHandler
-    
-// }
-
-// import axios from 'axios'
-// import Vue from 'vue'
 const baseApi = {
     log(){}, // 上报
     init(){},
+    bindEvent(){},
+    logJsException(){},
+    logResourceException(){},
+    bindErrorEvent(){},
+    bindPromiseEvent(){},
+    logPromiseException(){},
+    logAjaxException(){},
+    logCrashException(){}
 }
 const shared = {
     noop(){}
@@ -182,17 +25,34 @@ const utils = {
     }
 }
 const FROM_SiTE = window.location.href
-const xhrEvents = ['open', 'send', 'loadstart','loadend', 'load', 'abort']
-const em = (
+const xhrEvents = ['open', 'send','load', 'loadstart','loadend', 'abort', 'progress']
+const URL_MAP = new Map()
+let CURRENT_URL = ''
+const emo = (
     function(){
-        const monitor = {...baseApi}
-        monitor.log = function(...data){
-            const _default = {
-                site: FROM_SiTE
+        let config = {}
+        const monitor = baseApi
+        monitor.log = function(data){
+            const options = {
+                site: FROM_SiTE,
+                data,
+                method: config.method ? config.method : 'post',
+                url: config.url
             };
+
+            console.log('上报log', data)
+            // axios({
+            //     ...options
+            // }).then(res => {
+            //     console.log('上报成功', res)
+            // }).catch(err => {
+            //     console.log('上报失败', err)
+            // })
+
         }
-        // 初始化，传入自定义上传地址与
+        // 初始化，传入上传地址
         monitor.init = function (options){
+            config = {...options}
             monitor.bindEvent()
         }
             
@@ -200,29 +60,29 @@ const em = (
             monitor.logJsException()
             monitor.bindErrorEvent()
             monitor.logAjaxException()
-            monitor.logCrashException()
+            monitor.bindPromiseEvent()
+            // monitor.logCrashException()
         }
         // js的异常
         monitor.logJsException = function(){
             const oldHandler = Vue.config.errorHandler || shared.noop;
             Vue.config.errorHandler = function(err, vm, info) {
-                oldHandler.call(this, err, vm, info)
                 const data = {
                     type: 'js',
-                    stack: err,
-                    component: vm,
-                    message: info
+                    stack: err.stack,
+                    message: err.message
                 };
                 monitor.log(data)
+                oldHandler.call(this, err, vm, info)
             }
         }
-
+        
         // 静态资源加载的异常(图片, link, script等)
         monitor.logResourceException = function(err){
             if(utils.matchResourceType(err.srcElement)) {
                 const data = {
                     type: 'resource',
-                    stack: err.srcElement,
+                    stack: err.type,
                     src: err.srcElement.currentSrc,
                     message: 'image load exception',
                 };
@@ -230,19 +90,19 @@ const em = (
             }
         }
         monitor.bindErrorEvent = function(){
-            window.addEventListener('error', monitor.logResourceException, true)
+            window.addEventListener('error', monitor.logResourceException,true)
         }
 
         // promise的异常
         monitor.bindPromiseEvent = function(){
-            window.addEventListener('unhandledrejection', monitor.logPromiseException, false)
+            window.addEventListener('unhandledrejection', monitor.logPromiseException, true)
         }
         monitor.logPromiseException = function (err) {
+            const {message, stack} = err && err.reason || {}
             const data = {
-                type: 'promise',
-                stack: err,
-                message: err.reason,
-                message: 'promise runtime exception capture',
+                type: 'unhandledrejection',
+                stack: stack,
+                message: message,
             };
             monitor.log(data)
         }
@@ -250,17 +110,43 @@ const em = (
         // 接口异常捕获
         // 重写XML && 监听api操作
         function overwriteXhr(){
+            overOpen()
+            overSend()
             const oldXML = window.XMLHttpRequest;
             function newXML(){
                 const realXhr = new oldXML()
                 xhrEvents.forEach(event => {
-                    realXhr.addEventListener(event, () => {
-                        invokeXhrApi(customName)
-                    })
+                    realXhr.addEventListener(event, (e) => {
+                        console.log(event,'invoke ajax api', e)
+                        const customName = utils.generatorXhrApi(event)
+                        invokeXhrApi.call(realXhr,customName)
+                    },true)
                 })
                 return realXhr
             }
+            newXML.prototype = oldXML.prototype
             window.XMLHttpRequest = newXML
+        }
+        function overOpen(){
+            const xhrProto = window.XMLHttpRequest.prototype
+            const oldOpen = xhrProto.open
+            xhrProto.open = function(...params){
+                let [method,url] = params;
+                CURRENT_URL = url
+                if(!URL_MAP.has(url)) {
+                    URL_MAP.set(url, true)
+                }
+                oldOpen.apply(this, params)
+                console.log('open111', CURRENT_URL,params)
+            }
+        }
+        function overSend(){
+            const xhrProto = window.XMLHttpRequest.prototype
+            const oldSend = xhrProto.send
+            xhrProto.send = function(...params){
+                console.log('send222', CURRENT_URL, params)
+                oldSend.apply(this, params)
+            }
         }
         // 触发自定义xhr api事件
         function invokeXhrApi(eventName){
@@ -271,6 +157,7 @@ const em = (
         const handler = {
             open(){}
         }
+        // 上报ajax异常
         monitor.logAjaxException = function(){
             xhrEvents.forEach(event => {
                 handler[event] = function(e){
@@ -279,36 +166,37 @@ const em = (
                         message: e.message,
                         type: 'ajax'
                     }
-                    monitor.log(data)
+                    // monitor.log(data)
                 }
                 const customName = utils.generatorXhrApi(event)
                 window.addEventListener(customName, function(e) {
+                    console.log(customName,'上报ajax异常', e, '')
                     handler[event](e)
-                })
+                }, true)
             })
             
             overwriteXhr()
         }
-
+        
         // 网页崩溃异常，后期会实现为插件引入
         monitor.logCrashException = function () {
             if('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js', { scope: '/'}).then(res => {
+                navigator.serviceWorker.register('../public/sw.js', { scope: '/'}).then(res => {
                     console.log('register successed', res)
                     let HEARTBEAT_INTERVAL = 5 * 1000; // 每五秒发一次心跳
                     let sessionId = 'user-invoke';
                     let heartbeat = function () {
                         navigator.serviceWorker.controller.postMessage({
-                        type: 'heartbeat',
-                        id: sessionId,
-                        data: {} // 附加信息，如果页面 crash，上报的附加数据
+                            type: 'heartbeat',
+                            id: sessionId,
+                            data: {} // 附加信息，如果页面 crash，上报的附加数据
                         });
                     }
                     window.addEventListener("beforeunload", function() {
-                        navigator.serviceWorker.controller.postMessage({
-                        type: 'unload',
-                        id: sessionId
-                        });
+                            navigator.serviceWorker.controller.postMessage({
+                            type: 'unload',
+                            id: sessionId
+                        },true);
                     });
                     setInterval(heartbeat, HEARTBEAT_INTERVAL);
                     heartbeat();
@@ -317,6 +205,7 @@ const em = (
                 })
             }
         }
+        return monitor
     }
 )()
-export const emo = em
+export const em = emo

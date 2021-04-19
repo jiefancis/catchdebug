@@ -7,6 +7,15 @@
    4. 接口异常
    5. 网页崩溃
 
+## 简单引入使用
+```
+下载mini-report.js文件，放置在项目下在main.js文件中进行如下配置
+import {em} from 相对路径
+em.init({
+   url: 'https://www.baidu.com' // 上报地址
+})
+```
+
 ## 如何捕获异常
    1. js运行时异常
       window.onerror和window.addEventListener('error',e=>{})均可用来获取js异常，其中addEventListener('error',callback)优先级高于onerror。但在Vue项目中这两个是无法捕获到js的异常。另一个兼容方案是：重写Vue本身的异常捕获的api：Vue.config.errorHandler。具体代码实现看report-core.js文件。
@@ -32,3 +41,7 @@
          参考链接：[service-worker](https://www.cnblogs.com/dojo-lzz/p/8047336.html)
          serviceWorker主要能力集中在网络代理和离线缓存。是一个能在网页关闭时仍然运行的WebWorker。网页可以通过 navigator.serviceWorker.controller.postMessage API 向掌管自己的 SW 发送消息。借鉴websocket的心跳原理，实现serviceWorker的心跳检测机制。具体代码查看 [report-core](https://github.com/ronin0516/mini-report/blob/master/report-core.js)
 
+
+## 待完善的问题
+1. ajax捕获异常未处理完善，死循环
+2. 项目目前仅支持vue框架
