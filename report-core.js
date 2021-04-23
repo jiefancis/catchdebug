@@ -113,74 +113,95 @@ const emo = (
 
         // 接口异常捕获
         // 重写XML && 监听api操作
-        function overwriteXhr(){
-            overOpen()
-            overSend()
-            const oldXML = window.XMLHttpRequest;
-            function newXML(){
-                const realXhr = new oldXML()
-                xhrEvents.forEach(event => {
-                    realXhr.addEventListener(event, (e) => {
-                        console.log(event,'invoke ajax api', e)
-                        const customName = utils.generatorXhrApi(event)
-                        invokeXhrApi.call(realXhr,customName)
-                    },true)
-                })
-                return realXhr
-            }
-            newXML.prototype = oldXML.prototype
-            window.XMLHttpRequest = newXML
-        }
-        function overOpen(){
-            const xhrProto = window.XMLHttpRequest.prototype
-            const oldOpen = xhrProto.open
-            xhrProto.open = function(...params){
-                let [method,url] = params;
-                CURRENT_URL = url
-                if(!URL_MAP.has(url)) {
-                    URL_MAP.set(url, true)
-                }
-                oldOpen.apply(this, params)
-                console.log('open111', CURRENT_URL,params)
-            }
-        }
-        function overSend(){
-            const xhrProto = window.XMLHttpRequest.prototype
-            const oldSend = xhrProto.send
-            xhrProto.send = function(...params){
-                console.log('send222', CURRENT_URL, params)
-                oldSend.apply(this, params)
-            }
-        }
-        // 触发自定义xhr api事件
-        function invokeXhrApi(eventName){
-            const event = new CustomEvent(eventName, {detail: this})
-            window.dispatchEvent(event)
-        }
-        // 处理ajax api事件信息
-        const handler = {
-            open(){}
-        }
-        // 上报ajax异常
         monitor.logAjaxException = function(){
-            xhrEvents.forEach(event => {
-                handler[event] = function(e){
-                    const data = {
-                        stack: e,
-                        message: e.message,
-                        type: 'ajax'
-                    }
-                    // monitor.log(data)
-                }
-                const customName = utils.generatorXhrApi(event)
-                window.addEventListener(customName, function(e) {
-                    console.log(customName,'上报ajax异常', e, '')
-                    handler[event](e)
-                }, true)
-            })
-            
-            overwriteXhr()
+            network()
         }
+        function network(){
+        class LogNetwork{
+            constructor(){
+            this.requestList = {}
+            this.id = 0
+            this.mockAjax()
+            this.readystates = [0,1,2,3,4]
+            this.collectData = {
+                status: undefined, 
+                readyState: undefined,
+                response: undefined,
+                responseType: undefined,
+                responseURL: undefined,
+                responseXML: undefined,
+                statusText: undefined,
+                withCredentials: undefined
+            }
+            }
+            generateLogData(XMLReq){
+            for(let key in this.collectData) {
+                this.collectData[key] = XMLReq[key]
+            }
+            return this.collectData
+            }
+            mockAjax(){
+            let _XMLHttpRequest = window.XMLHttpRequest;
+            if(!_XMLHttpRequest) { return ;}
+            let that = this;
+            const _open = window.XMLHttpRequest.prototype.open,
+                    _send = window.XMLHttpRequest.prototype.send,
+                    _setRequestHeader = window.XMLHttpRequest.prototype.setRequestHeader;
+                
+            window.XMLHttpRequest.prototype.open = function (){
+                let timer = null;
+                const XMLReq = this;
+                const args = [...arguments],
+                    url = args[1],
+                    method = args[0],
+                    id = ++that.id;
+
+                const _onreadystatechange = XMLReq.onreadystatechange || function(){};
+                const onreadystatechange = function() {
+                const item = that.requestList[that.id] || {}
+
+                if(XMLReq.readystate > 1) {
+                    item.status = XMLReq.status
+                }
+
+                console.log(url,'outer  XMLReq.readystate === 4',XMLReq.readyState === 4,XMLReq.readyState,XMLReq.status)
+                if(XMLReq.readyState === 4) {
+                    console.log(XMLReq.status,'inner XMLReq.readyState === 4',XMLReq.readyState, (XMLReq.status != 200))
+                    if ((url !== config.url) && (XMLReq.status != 200)) {
+                    
+                        const collectData = that.generateLogData(XMLReq)
+                    
+                        const logData = {
+                        type: 'ajax',
+                        url,
+                        method,
+                        ...collectData,
+                        message: 'capture ajax exception'
+                        }
+                        console.log('捕获异常', logData, XMLReq)
+                        monitor.log(logData)
+                    }
+                    clearInterval(timer)
+                }
+                _onreadystatechange.apply(XMLReq, arguments)
+                }
+                XMLReq.onreadystatechange = onreadystatechange
+
+                let preState = -1;
+                timer = setInterval(() => {
+                if(preState !== XMLReq.readystate) {
+                    preState = XMLReq.readystate
+                    
+                    onreadystatechange.call(XMLReq)
+                }
+                },10)
+                _open.apply(XMLReq,arguments)
+            }
+            }
+        }
+        new LogNetwork()
+        }
+        
         
         // 网页崩溃异常，后期会实现为插件引入
         monitor.logCrashException = function () {

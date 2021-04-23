@@ -1,13 +1,6 @@
 # 前端异常监控的核心原理
 
-## 监控异常的分类
-   1. js运行时异常
-   2. 静态资源加载异常（img script link等）
-   3. promise未处理的异常（未使用catch捕获）
-   4. 接口异常
-   5. 网页崩溃
-
-## 简单引入使用
+## Usage
 ```
 下载mini-report.js文件，放置在项目下在main.js文件中进行如下配置
 import {em} from 相对路径
@@ -15,8 +8,17 @@ em.init({
    url: 'https://www.baidu.com' // 上报地址
 })
 ```
+## 原理
+### 监控异常的分类
+   1. js运行时异常
+   2. 静态资源加载异常（img script link等）
+   3. promise未处理的异常（未使用catch捕获）
+   4. 接口异常
+   5. 网页崩溃
 
-## 如何捕获异常
+
+
+### 如何捕获异常
    1. js运行时异常
       window.onerror和window.addEventListener('error',e=>{})均可用来获取js异常，其中addEventListener('error',callback)优先级高于onerror。但在Vue项目中这两个是无法捕获到js的异常。另一个兼容方案是：重写Vue本身的异常捕获的api：Vue.config.errorHandler。具体代码实现看report-core.js文件。
 
@@ -29,6 +31,20 @@ em.init({
    4. 接口异常的监控
       现在市面上使用的大多数前后端数据交流的库axios fetch都是基于XMLHttpRequest对象进行封装（不考虑兼容IE）。考虑到sdk的侵入式接入，可以通过重写XMLHttpRequest这个函数所有api，在对应的api执行前插入捕获逻辑。
       report-core.js文件中的实现：ajaxEventTrigger函数接受函数名参数：eventName，创建一个自定义函数并由window来触发这个函数。newXHR函数的作用是重写window.XMLHttpRequest；newXHR()函数中，通过对XMLHttpRequest实例进行api层面的重写，oldXMLHttpRequest创建的实例通过addEventListener的方式绑定original原生XMLHttpRequest的所有api，回调触发自定义事件。
+
+      ```
+         前置知识点：
+         xhr.readystate
+         0           unsend               尚未调用open方法
+         1           opened               open方法已经被调用
+         2           headers_received     send方法已经调用，并且头部和状态可获取
+         3           loading              下载中，responseText已经包含部分属性
+         4           done                 下载完成
+
+         xhr.status = 0
+         1、（如果状态是UNSENT或者OPENED，返回0） || （如果错误标签被设置(可以理解为跨域？)，返回0）
+         2、Return the HTTP status code.（返回HTTP状态码）
+      ```
    
    5. 如何监控网页崩溃？
       巧妙利用网页崩溃无法触发beforeunload事件，利用window对象的load与beforeunload事件实现网页崩溃的监控。这个方案主要是通过网页崩溃时，用户对页面进行重新刷新的操作，在首次加载与重新刷新的操作过程中，比较本地sessionStorage存储的网页是否崩溃的标志状态的值是否为true（load事件设置为pending状态，beforeunload事件设置为true），对此进行操作。
@@ -42,6 +58,6 @@ em.init({
          serviceWorker主要能力集中在网络代理和离线缓存。是一个能在网页关闭时仍然运行的WebWorker。网页可以通过 navigator.serviceWorker.controller.postMessage API 向掌管自己的 SW 发送消息。借鉴websocket的心跳原理，实现serviceWorker的心跳检测机制。具体代码查看 [report-core](https://github.com/ronin0516/mini-report/blob/master/report-core.js)
 
 
-## 待完善的问题
-1. ajax捕获异常未处理完善，死循环
-2. 项目目前仅支持vue框架
+### 待完善的问题
+1. ajax捕获异常未处理完善
+2. 目前仅支持vue框架
