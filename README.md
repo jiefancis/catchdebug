@@ -15,6 +15,7 @@ em.init({
    3. promise未处理的异常（未使用catch捕获）
    4. 接口异常
    5. 网页崩溃
+   6. 第三方脚本通过外链引入引发的异常
 
 
 
@@ -56,6 +57,14 @@ em.init({
       serviceWorker：
          参考链接：[service-worker](https://www.cnblogs.com/dojo-lzz/p/8047336.html)
          serviceWorker主要能力集中在网络代理和离线缓存。是一个能在网页关闭时仍然运行的WebWorker。网页可以通过 navigator.serviceWorker.controller.postMessage API 向掌管自己的 SW 发送消息。借鉴websocket的心跳原理，实现serviceWorker的心跳检测机制。具体代码查看 [report-core](https://github.com/ronin0516/mini-report/blob/master/report-core.js)
+      
+   6. 第三方包外联引入产生的异常
+      第三方包外联js，由于浏览器同源策略的限制，在页面引用的非同域外部脚本中抛出的异常，本页面没有权限获得这个异常详情。
+      
+      如何捕获？
+         1、同源化。将js文件下载放到同一域名下
+         2、跨域资源共享机制（CORS），每一个script标签添加crossorigin属性
+         
 
 
 ### 待完善的问题

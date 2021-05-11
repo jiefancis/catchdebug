@@ -33,10 +33,6 @@ const emo = (
         let config = {}
         const monitor = baseApi
         monitor.log = function(data){
-            // ajax监控暂未完善
-            if(data.type === 'ajax') {
-                return 
-            }
             const options = {
                 site: FROM_SiTE,
                 data,
@@ -44,7 +40,7 @@ const emo = (
                 url: config.url
             };
 
-            console.log('上报log', data)
+            // console.log('上报log', data)
             axios({
                 ...options
             }).then(res => {
@@ -117,89 +113,90 @@ const emo = (
             network()
         }
         function network(){
-        class LogNetwork{
-            constructor(){
-            this.requestList = {}
-            this.id = 0
-            this.mockAjax()
-            this.readystates = [0,1,2,3,4]
-            this.collectData = {
-                status: undefined, 
-                readyState: undefined,
-                response: undefined,
-                responseType: undefined,
-                responseURL: undefined,
-                responseXML: undefined,
-                statusText: undefined,
-                withCredentials: undefined
-            }
-            }
-            generateLogData(XMLReq){
-            for(let key in this.collectData) {
-                this.collectData[key] = XMLReq[key]
-            }
-            return this.collectData
-            }
-            mockAjax(){
-            let _XMLHttpRequest = window.XMLHttpRequest;
-            if(!_XMLHttpRequest) { return ;}
-            let that = this;
-            const _open = window.XMLHttpRequest.prototype.open,
-                    _send = window.XMLHttpRequest.prototype.send,
-                    _setRequestHeader = window.XMLHttpRequest.prototype.setRequestHeader;
-                
-            window.XMLHttpRequest.prototype.open = function (){
-                let timer = null;
-                const XMLReq = this;
-                const args = [...arguments],
-                    url = args[1],
-                    method = args[0],
-                    id = ++that.id;
-
-                const _onreadystatechange = XMLReq.onreadystatechange || function(){};
-                const onreadystatechange = function() {
-                const item = that.requestList[that.id] || {}
-
-                if(XMLReq.readystate > 1) {
-                    item.status = XMLReq.status
-                }
-
-                console.log(url,'outer  XMLReq.readystate === 4',XMLReq.readyState === 4,XMLReq.readyState,XMLReq.status)
-                if(XMLReq.readyState === 4) {
-                    console.log(XMLReq.status,'inner XMLReq.readyState === 4',XMLReq.readyState, (XMLReq.status != 200))
-                    if ((url !== config.url) && (XMLReq.status != 200)) {
-                    
-                        const collectData = that.generateLogData(XMLReq)
-                    
-                        const logData = {
-                        type: 'ajax',
-                        url,
-                        method,
-                        ...collectData,
-                        message: 'capture ajax exception'
-                        }
-                        console.log('捕获异常', logData, XMLReq)
-                        monitor.log(logData)
+            class LogNetwork{
+                constructor(){
+                    this.requestList = {}
+                    this.id = 0
+                    this.mockAjax()
+                    this.readystates = [0,1,2,3,4]
+                    this.collectData = {
+                        status: undefined, 
+                        readyState: undefined,
+                        response: undefined,
+                        responseType: undefined,
+                        responseURL: undefined,
+                        responseXML: undefined,
+                        statusText: undefined,
+                        withCredentials: undefined
                     }
-                    clearInterval(timer)
                 }
-                _onreadystatechange.apply(XMLReq, arguments)
+                generateLogData(XMLReq){
+                    for(let key in this.collectData) {
+                        this.collectData[key] = XMLReq[key]
+                    }
+                    return this.collectData
                 }
-                XMLReq.onreadystatechange = onreadystatechange
+                mockAjax(){
+                    let _XMLHttpRequest = window.XMLHttpRequest;
+                    if(!_XMLHttpRequest) { return ;}
+                    let that = this;
+                    const _open = window.XMLHttpRequest.prototype.open,
+                          _send = window.XMLHttpRequest.prototype.send,
+                          _setRequestHeader = window.XMLHttpRequest.prototype.setRequestHeader;
+                        
+                    window.XMLHttpRequest.prototype.open = function (){
+                        let timer = null;
+                        const XMLReq = this;
+                        const args = [...arguments],
+                            url = args[1],
+                            method = args[0],
+                            id = ++that.id;
 
-                let preState = -1;
-                timer = setInterval(() => {
-                if(preState !== XMLReq.readystate) {
-                    preState = XMLReq.readystate
-                    
-                    onreadystatechange.call(XMLReq)
+                        const _onreadystatechange = XMLReq.onreadystatechange || function(){};
+                        const onreadystatechange = function() {
+                        const item = that.requestList[that.id] || {}
+
+                        if(XMLReq.readystate > 1) {
+                            item.status = XMLReq.status
+                        }
+
+                        console.log(url,'outer  XMLReq.readystate === 4',XMLReq.readyState === 4,XMLReq.readyState,XMLReq.status)
+                        if(XMLReq.readyState === 4) {
+                            console.log(XMLReq.status,'inner XMLReq.readyState === 4',XMLReq.readyState, (XMLReq.status != 200))
+                            if ((url !== config.url) && (XMLReq.status != 200)) {
+                            
+                                const collectData = that.generateLogData(XMLReq)
+                            
+                                const logData = {
+                                type: 'ajax',
+                                url,
+                                method,
+                                ...collectData,
+                                message: 'capture ajax exception'
+                                }
+                                console.log('捕获异常', logData, XMLReq)
+                                monitor.log(logData)
+                            }
+                            clearInterval(timer)
+                        }
+                        _onreadystatechange.apply(XMLReq, arguments)
+                        }
+                        XMLReq.onreadystatechange = onreadystatechange
+
+                        let preState = -1;
+                        timer = setInterval(() => {
+                            console.log(XMLReq.status,'定时器', XMLReq.readystate)
+                            if(preState !== XMLReq.readystate) {
+                                preState = XMLReq.readystate
+                                
+                                onreadystatechange.call(XMLReq)
+                            }
+                        },10)
+                        _open.apply(XMLReq,arguments)
+                    }
                 }
-                },10)
-                _open.apply(XMLReq,arguments)
             }
-            }
-        }
-        new LogNetwork()
+            new LogNetwork()
         }
         
         
