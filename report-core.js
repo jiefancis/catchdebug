@@ -154,43 +154,51 @@ const emo = (
 
                         const _onreadystatechange = XMLReq.onreadystatechange || function(){};
                         const onreadystatechange = function() {
-                        const item = that.requestList[that.id] || {}
+                            const item = that.requestList[that.id] || {}
 
-                        if(XMLReq.readystate > 1) {
-                            item.status = XMLReq.status
-                        }
-
-                        console.log(url,'outer  XMLReq.readystate === 4',XMLReq.readyState === 4,XMLReq.readyState,XMLReq.status)
-                        if(XMLReq.readyState === 4) {
-                            console.log(XMLReq.status,'inner XMLReq.readyState === 4',XMLReq.readyState, (XMLReq.status != 200))
-                            if ((url !== config.url) && (XMLReq.status != 200)) {
-                            
-                                const collectData = that.generateLogData(XMLReq)
-                            
-                                const logData = {
-                                type: 'ajax',
-                                url,
-                                method,
-                                ...collectData,
-                                message: 'capture ajax exception'
-                                }
-                                console.log('捕获异常', logData, XMLReq)
-                                monitor.log(logData)
+                            if(XMLReq.readystate > 1) {
+                                item.status = XMLReq.status
                             }
-                            clearInterval(timer)
-                        }
-                        _onreadystatechange.apply(XMLReq, arguments)
+
+                            if(XMLReq.readyState === 4) {
+                                // 上报异常的接口异常
+                                if(url === config.url) {
+                                    if(XMLReq.status !== 200) {
+                                        console.error(`${url} is crashed . please check it work correctly`)
+                                        return
+                                    }
+                                } else if(XMLReq.status != 200) {
+                                
+                                    const collectData = that.generateLogData(XMLReq)
+                                
+                                    const logData = {
+                                        type: 'ajax',
+                                        url,
+                                        method,
+                                        ...collectData,
+                                        message: 'capture ajax exception'
+                                    }
+                                    console.log('捕获ajax异常', logData, XMLReq)
+                                    monitor.log(logData)
+                                }
+                                clearInterval(timer)
+                            }
+                            _onreadystatechange.apply(XMLReq, arguments)
                         }
                         XMLReq.onreadystatechange = onreadystatechange
 
                         let preState = -1;
                         timer = setInterval(() => {
-                            console.log(XMLReq.status,'定时器', XMLReq.readystate)
-                            if(preState !== XMLReq.readystate) {
-                                preState = XMLReq.readystate
+                            console.log(XMLReq.status,typeof XMLReq.status,'定时器', XMLReq.readyState, typeof XMLReq.readyState)
+                            if(preState !== XMLReq.readyState) {
+                                preState = XMLReq.readyState
                                 
                                 onreadystatechange.call(XMLReq)
                             }
+                            // if(XMLReq.status === 200 &&  XMLReq.readyState === 4) {
+                            //     console.log('关闭定时器',timer)
+                            //     clearInterval(timer)
+                            // }
                         },10)
                         _open.apply(XMLReq,arguments)
                     }
