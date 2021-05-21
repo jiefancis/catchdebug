@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import axios from 'axios'
+// import axios from 'axios'
 const baseApi = {
     log(){}, // 上报
     init(){},
@@ -32,6 +32,31 @@ const emo = (
     function(){
         let config = {}
         const monitor = baseApi
+
+        function notifier(options){
+            return new Promise((resolve, reject) => {
+                if(sendBeacon in navigator) {
+                    let succ = navigator.sendBeacon(config.url, options)
+                    if(succ) {
+                        resolve(succ)
+                    } else {
+                        reject(succ)
+                    }
+                } else {
+                    var xhr = new XMLHttpRequest()
+                    xhr.open('post',config.url)
+                    xhr.onreadystatechange = function(){
+                        if(xhr.readyState === XMLHttpRequest.DONE) {
+                            if(xhr.status >= 200 && xhr.status < 300) {
+                                return resolve(xhr.response)
+                            }
+                            reject(xhr)
+                        } 
+                    }
+                }
+            })
+            
+        }
         monitor.log = function(data){
             const options = {
                 site: FROM_SiTE,
@@ -41,7 +66,7 @@ const emo = (
             };
 
             // console.log('上报log', data)
-            axios({
+            notifier({
                 ...options
             }).then(res => {
                 console.log('上报成功', res)
@@ -51,6 +76,10 @@ const emo = (
 
         }
         // 初始化，传入上传地址
+        /**
+         * @params url 异常上报地址
+         * @params crashUrl 网页崩溃异常，serviceworker初始化地址
+         */
         monitor.init = function (options){
             config = {...options}
             monitor.bindEvent()
@@ -211,7 +240,7 @@ const emo = (
         // 网页崩溃异常，后期会实现为插件引入
         monitor.logCrashException = function () {
             if('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('../public/sw.js', { scope: '/'}).then(res => {
+                navigator.serviceWorker.register(config.crashUrl || '../public/sw.js', { scope: '/'}).then(res => {
                     console.log('register successed', res)
                     let HEARTBEAT_INTERVAL = 5 * 1000; // 每五秒发一次心跳
                     let sessionId = 'user-invoke';
