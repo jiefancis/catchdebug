@@ -8,7 +8,7 @@ class Client {
         }
     ) {
         this._url = reportUrl
-        this._notifier = notifier
+        this._notifier = notify
     }
     init() {
         return this.use(browserExtension) || this
