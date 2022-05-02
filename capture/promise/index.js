@@ -4,7 +4,7 @@ function unhandledrejection(e) {
 }
 export function captureUnhandledRejection() {
     window.addEventListener(
-        'unhandledRejection',
+        'unhandledrejection',
         unhandledrejection,
         false
     )
@@ -12,7 +12,7 @@ export function captureUnhandledRejection() {
 
 export function removeUnhandledRejection() {
     window.removeEventListener(
-        'unhandledRejection',
+        'unhandledrejection',
         unhandledrejection,
         false
     )

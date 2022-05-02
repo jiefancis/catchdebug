@@ -30,7 +30,9 @@ export function captureAjaxError() {
                         }
                     }
                     console.log('上报数据', detail)
-                    xhrErrorDispatcher(detail)
+                    if(this.status >= 400) {
+                        xhrErrorDispatcher(detail)
+                    }
                 }
             }
         })
