@@ -1,0 +1,99 @@
+<html>
+    <head>
+        <title>catchdebug</title>
+    </head>
+    <body>
+        <img src="https://www.baidu.com/1.jpg"/>
+        <script>
+            // ajax
+            const xhrOrigin = XMLHttpRequest.prototype
+            const xhrOpen = xhrOrigin.open
+            const xhrSend = xhrOrigin.send
+            captureAjaxError()
+            var xhr = new XMLHttpRequest()
+            xhr.open('get', 'https://www.baidu.com/')
+            xhr.onreadystatechange = function(){
+                console.log('baocuo', xhr.readyState, xhr.status, xhr)
+            }
+            xhr.send({a:1})
+            
+            
+            function captureAjaxError() {
+                let desc = {}
+                xhrOrigin.open = function(method, url, async = true) {
+                    desc.method = method
+                    desc.url = url
+                    desc.async = async
+                    xhrOpen.call(this, ...arguments)
+                }
+                var client = { url: ''}
+                xhrOrigin.send = function(...arg) {
+                    this.addEventListener('readystatechange', function(){
+                        if(this.readyState === XMLHttpRequest.DONE) {
+                            if(client.url !== desc.url) {
+                                const detail = {
+                                    req: {
+                                        url: desc.url,
+                                        method: desc.method,
+                                        async: desc.async,
+                                        data: arg
+                                    },
+                                    res: {
+                                        status: this.status,
+                                        statusText: this.statusText,
+                                        response: this.response
+                                    }
+                                }
+                                console.log('上报数据', detail)
+                                xhrErrorDispatcher(detail)
+                            }
+                        }
+                    })
+                    xhrSend.apply(this, arg)
+                }
+            }
+
+            new Promise((resolve, reject) => {
+                a+b
+            })
+            function unhandledrejectionDispatcher(e) {
+                let detail = {
+                    message: e.reason.message || e.reason,
+                    stack: e.reason.stack
+                }
+                console.log('unhandledrejectionDispatcher', e)
+            }
+
+            function captureUnhandledRejection() {
+                window.addEventListener(
+                    'unhandledrejection',
+                    unhandledrejectionDispatcher,
+                    false
+                )
+            }
+            captureUnhandledRejection()
+            function errorListenerDispatcher(e) {
+                console.log('静态资源加载异常', e)
+                
+            }
+            function captureResourceError() {
+                window.addEventListener(
+                    'error',
+                    errorListenerDispatcher,
+                    true
+                )
+            }
+            captureResourceError()
+            a+b
+        </script>
+
+        <!-- <script type="module" src="../index.js">
+            let client = createClient(
+                {
+                    reportUrl: 'https://www.baidu.com'
+                }
+            )
+            client.init()
+        </script> -->
+    </body>
+</html>
