@@ -34,5 +34,4 @@ export function errorListenerDispatcher(e) {
     } else {
         handleResourceError(e)
     }
-    client.notify(detail)
 }
