@@ -30,7 +30,7 @@ export function captureAjaxError() {
                         }
                     }
                     console.log('上报数据', detail)
-                    xhrErrorDispatcher()
+                    xhrErrorDispatcher(detail)
                 }
             }
         })

@@ -1,5 +1,6 @@
 
 import { loadExtension, browserExtension } from "./extension"
+import { notify } from './notify'
 class Client {
     constructor(
         {

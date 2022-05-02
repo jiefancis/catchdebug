@@ -6,7 +6,7 @@ export function captureResourceError() {
     window.addEventListener(
         'error',
         errorListener,
-        false
+        true
     )
 }
 
@@ -14,6 +14,6 @@ export function removeResourceError() {
     window.removeEventListener(
         'error',
         errorListener,
-        false
+        true
     )
 }
